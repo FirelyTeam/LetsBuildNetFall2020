@@ -52,7 +52,7 @@ be used by the FhirClient. An example for authorization would be:
 ```c#
 public class AuthorizationMessageHandler : HttpClientHandler
 {
-    public System.Net.Http.Headers.AuthenticationHeaderValue Authorization   { get;set; }
+    public System.Net.Http.Headers.AuthenticationHeaderValue Authorization   { get; set; }
 
     protected async override Task<HttpResponseMessage> SendAsync(HttpRequestMessage
              request, CancellationToken cancellationToken)
@@ -71,11 +71,15 @@ public class AuthorizationMessageHandler : HttpClientHandler
     var client = new FhirClient("https://labs.vonk.fire.ly/r4", null, handler);
 ```
 - Now you can request a Patient:
+```c#
 var pat = client.Read<Patient>("Patient/test");
+```
 - You can also perform a search for the Patient’s white blood cell count Observations, resulting in a
 Bundle resource:
+```c#
 var q = new SearchParams("code", "http://loinc.org|6690-2");
 var result = client.Search<Observation>(q);
+```
 - Add those results to an Observation list, and display the Patient and Observation data
 - Do the same for red blood cell count, and hemoglobin Observations
 Have fun, and remember to ask for help if you get stuck!
