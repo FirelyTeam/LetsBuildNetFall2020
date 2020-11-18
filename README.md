@@ -83,3 +83,11 @@ var result = client.Search<Observation>(q);
 - Add those results to an Observation list, and display the Patient and Observation data
 - Do the same for red blood cell count, and hemoglobin Observations
 Have fun, and remember to ask for help if you get stuck!
+
+## Further information
+Some useful links:
+- Extra documentation for FhirClient: https://docs.fire.ly/firelynetsdk/client.html 
+- HL7 Fhir Restful API specification: https://www.hl7.org/fhir/http.html 
+- Zulip stream for asking questions about Firely .NET SDK: https://chat.fhir.org/#narrow/stream/179171-dotnet 
+- List of Fhir Test servers: https://confluence.hl7.org/display/FHIR/Public+Test+Servers
+- SMART overview: https://github.com/GinoCanessa/FhirDevVideoNotes/tree/main/03-Getting-SMART
