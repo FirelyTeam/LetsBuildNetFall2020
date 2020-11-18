@@ -55,20 +55,20 @@ public class AuthorizationMessageHandler : HttpClientHandler
     public System.Net.Http.Headers.AuthenticationHeaderValue Authorization   { get;set; }
 
     protected async override Task<HttpResponseMessage> SendAsync(HttpRequestMessage
-request, CancellationToken cancellationToken)
-{
-if (Authorization != null)
-request.Headers.Authorization = Authorization;
-return await base.SendAsync(request, cancellationToken);
-}
+             request, CancellationToken cancellationToken)
+    {
+       if (Authorization != null)
+          request.Headers.Authorization = Authorization;
+       return await base.SendAsync(request, cancellationToken);
+    }
 } 
 ```
 - Then add that to the FhirClient – note the different server base!:
 ```c#
-var handler = new AuthorizationMessageHandler();
-var bearerToken = "AbCdEf123456"; //example-token, replace with provided token
-handler.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
-var client = new FhirClient("https://labs.vonk.fire.ly/r4", null, handler);
+    var handler = new AuthorizationMessageHandler();
+    var bearerToken = "AbCdEf123456"; //example-token, replace with provided token
+    handler.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
+    var client = new FhirClient("https://labs.vonk.fire.ly/r4", null, handler);
 ```
 - Now you can request a Patient:
 var pat = client.Read<Patient>("Patient/test");
