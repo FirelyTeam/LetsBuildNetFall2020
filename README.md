@@ -23,10 +23,10 @@ For this, you have to include the NuGet package `Hl7.Fhir.Specification.R4`.
 ```c#
     var outcome = validator.Validate(obs);
 ```
--	Check the outcome of the validation operation. This outcome has some properties that you can use:
-   * Success: a Boolean which indicates whether the validation was successful or not
-   * Issue: a list of issues that were raised during validation
-   * See [this link](https://www.hl7.org/fhir/operationoutcome.html) for more information about the OperationOutcome.
+- Check the outcome of the validation operation. This outcome has some properties that you can use:
+  - Success: a Boolean which indicates whether the validation was successful or not
+  - Issue: a list of issues that were raised during validation
+  -  See [this link](https://www.hl7.org/fhir/operationoutcome.html) for more information about the OperationOutcome.
 
 -	You will notice that the validation fails. The message `[ERROR] Unable to resolve reference to profile 'http://hl7.org/fhir/StructureDefinition/Observation'` is shown. 
 The validator needs the standard Observation profile (StructureDefinition) to validate the instance. So, we must tell the validator where to find this this profile. We do this by passing a ResourceResolver to the validator. For all the standard HL7 FHIR resources, the SDK has a special ResourceResolver already made for you: `ZipSource.CreateValidationSource()`:
