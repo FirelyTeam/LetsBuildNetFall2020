@@ -1,68 +1,71 @@
 # Let's Build .Net Fall 2020
 
-The instructions for day 3 can also be found [here](https://github.com/FirelyTeam/LetsBuildNetFall2020/blob/day-3/DD20_Nov_Track_Day3.pdf) in pdf form.
+The instructions for day 4 can also be found [here](https://github.com/FirelyTeam/LetsBuildNetFall2020/blob/day-4/DD20_Nov_Track_Day4.pdf) in pdf form.
 
-## Day 3 – Validating FHIR resources
+## Day 4 – Extra’s and finalizing your app
 
-**Exercise**: For this exercise, we are going to validate our resources before sending them to a FHIR server. We will use the Validator of the Firely .NET SDK. 
+**Goal**: Playtime to try out any of the previously learned skills, plus some extra’s mentioned below.
+
+**Exercise (optional)**: For this exercise, we are going to add an extension to our Patient resources, and create a transaction Bundle to send a Patient and its Observations to the server in one go.
+
 
 ### Exercise steps
--	Open your previously created app, or clone the day-2 branch with the example solution: https://github.com/FirelyTeam/LetsBuildNetFall2020/tree/day-2
--	To your main code, add the following using statement to include the validator:
+-	Open your previously created app, or clone the day-3 branch with the example solution: https://github.com/FirelyTeam/LetsBuildNetFall2020/tree/day-3
+-	In the sample-data-2.csv, we have added a place of birth to the patient data. Change your mapping code for the Patient to include that information.
+
+To do so, you will need to add an extension:
+- First, find an extension that is suitable for the data, so you know the canonical URL to use, and which data type to use for the value. In this case, there’s a standard extension for place of birth listed on this page: http://hl7.org/fhir/patient-profiles.html  
+  If you need non-standard extensions, a good starting point to find them is [Simplifier.net](https://simplifier.net)
+-	Knowing the URL and type, you can add the data to your Patient:
+
 ```c#
-    using Hl7.Fhir.Validation;
-    using Hl7.Fhir.Specification.Source;
+  var birthPlace = new Address() { City = record.PATIENT_BIRTHPLACE };
+  patient.Extension.Add(new Extension("http://hl7.org/fhir/StructureDefinition/patient-birthPlace", birthPlace));
 ```
 
-For this, you have to include the NuGet package `Hl7.Fhir.Specification.R4`.
--	Create a new Validator instance:
-```c#
-    var validator = new Validator();
-```
--	Try to validate a single observation:
-```c#
-    var outcome = validator.Validate(obs);
-```
-- Check the outcome of the validation operation. This outcome has some properties that you can use:
-  - Success: a Boolean which indicates whether the validation was successful or not
-  - Issue: a list of issues that were raised during validation
-  -  See [this link](https://www.hl7.org/fhir/operationoutcome.html) for more information about the OperationOutcome.
+In order to send the Patient and Observations resources to the server in one go, we can create a transaction Bundle. This way, if anything fails, a rollback will take place server side. You can add any FHIR Rest interaction in a transaction entry, also with any conditions you could put on a single interaction. In our exercise we will only use the Create interaction, but you can try out the others as well.
 
--	You will notice that the validation fails. The message `[ERROR] Unable to resolve reference to profile 'http://hl7.org/fhir/StructureDefinition/Observation'` is shown. 
-The validator needs the standard Observation profile (StructureDefinition) to validate the instance. So, we must tell the validator where to find this this profile. We do this by passing a ResourceResolver to the validator. For all the standard HL7 FHIR resources, the SDK has a special ResourceResolver already made for you: `ZipSource.CreateValidationSource()`:
-```c#
-    var resolver = ZipSource.CreateValidationSource();
-    var settings = ValidationSettings.CreateDefault();
+-	After mapping the resources, create a new method to setup and send the transaction(s). In our example code we have chosen to create a separate transaction for each patient plus its observations, but one large transaction with all data could also be an option.
+-	You can use the TransactionBuilder from the SDK, which will create the correct Bundle structure. Use your previously created FhirClient, or create a new one in your method, and make sure to set the type of the Bundle to ‘transaction’:
 
-    settings.ResourceResolver = new CachedResolver(resolver);
-    var validator = new Validator(settings); 
+```c#
+  foreach (var p in patients)
+  {
+    var builder = new TransactionBuilder(client.Endpoint,
+                                         Bundle.BundleType.Transaction);
+  }
 ```
-- Note that we wrap the standard ResourceResolver in a `CachedResolver`. This will speed up the validation when you validate more than 1 resource. 
+-	After this, add your resource to the Bundle like this:
+```c#
+  builder.Create(p);
+```
+-	And do the same for each observation that is linked to the patient:
+```c#
+  var patsObservations = observations.FindAll(o => o.Subject.Reference.Equals("urn:uuid:" + p.Id));
+  foreach (var o in patsObservations)
+    builder.Create(o)
+```
+-	Now we want to make sure that the patient resource gets a fullUrl added to the Bundle entry, because that will be used by the server to update the references in the observations correctly:
+```c#
+  var transactionBundle = builder.ToBundle();
+  transactionBundle.Entry[0].FullUrl = "urn:uuid:" + p.Id;
+```
+-	The last step is to use the FhirClient to send the transaction to the server:
+```c#
+  var response = client.Transaction(transactionBundle);
+```
 
--	Run the program again and you will see that the validation of Observation is successful.
--	The field code in Observation is mandatory (see also https://www.hl7.org/fhir/observation.html). When we remove this code, the validator should report this. Try this out.
--	The validator can also use other profiles to validate against. In the subdirectory profile, there is such a profile: MyObservation.StructureDefinition.xml. You can download this profile [here](https://github.com/FirelyTeam/LetsBuildNetFall2020/blob/day-3/Day3-validating/DevDaysMapper/profiles/MyObservation.StructureDefinition.xml).
-This profile is derived from the standard Observation profile and restrict the category of an Observation: at least 2 categories are mandatory.
-In order to use this profile we have to tell the validator where to find this profile. We do this with a `DirectorySource`:
+If you now want to show some details of the resulting response Bundle, you could serialize it to your preferred format (XML/JSON) and output those.
+-	Add a using statement to use the serializer from the SDK:
 ```c#
-    var directoryResolver = new DirectorySource("profiles");
+  using Hl7.Fhir.Serialization;
 ```
-- This will read all profiles in the subdirectory profiles. To combine this profile with the standard profiles we use the class MultiResolver. The code would be then:
+-	Serialize the Patient and first Observation resource from the response:
 ```c#
-    var resolver = ZipSource.CreateValidationSource();
-    var directoryResolver = new DirectorySource("profiles");
-
-    var settings = ValidationSettings.CreateDefault();
-    settings.ResourceResolver = new CachedResolver(
-                    new MultiResolver(resolver, directoryResolver));
-                
-    var validator = new Validator(settings);
+  var serializer = new FhirJsonSerializer();
+  var createdPatient = serializer.SerializeToString(response.Entry[0]);
+  var firstObservation = serializer.SerializeToString(response.Entry[1]);
 ```
--	Let’s validate an observation with the new profile:
-```c#
-    var outcome = validator.Validate(obs, new[] {
-               "http://fire.ly/fhir/StructureDefinition/MyObservation" });
-```
-- You will see that the validation fails, because we have no observation with minimal 2 categories. 
+-	Output those to the console to see the data as the server has stored it. Specifically take a look at the fullUrl of the Patient, and the value in the Observation.subject field. They should be updated and also should match.
 
 Have fun, and remember to ask for help if you get stuck!
